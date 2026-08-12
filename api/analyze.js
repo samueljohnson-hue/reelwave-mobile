@@ -9,6 +9,10 @@ async function readBody(req) {
 }
 
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST required' });
   if (!process.env.OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY is not configured' });
   try {
@@ -37,8 +41,8 @@ export default async function handler(req, res) {
       if (name === 'audio') {
         audioPart = {
           data,
-          filename: headers.match(/filename="([^"]+)"/i)?.[1] || 'song.mp3',
-          type: headers.match(/content-type:\s*([^\r\n]+)/i)?.[1] || 'audio/mpeg'
+          filename: headers.match(/filename="([^"]+)"/i)?.[1] || 'song.wav',
+          type: headers.match(/content-type:\s*([^\r\n]+)/i)?.[1] || 'audio/wav'
         };
       }
     }
@@ -55,18 +59,27 @@ export default async function handler(req, res) {
     const words = (tx.words || []).map(w => ({ word: w.word, start: Number(w.start), end: Number(w.end) }));
     const segments = (tx.segments || []).slice(0, 16);
 
-    const response = await openai.responses.create({
-      model: 'gpt-5-mini',
-      input: `Plan surreal original animated sky scenes for a vertical music visualizer. Style: ${style}. Use clouds, stars, moons, sunsets, lightning, aurora and abstract celestial light. No logos or copyrighted characters. Return JSON only: {"scenes":[{"start":0,"end":5,"prompt":"...","mood":"..."}]}. Lyrics: ${JSON.stringify(segments.map(s => ({start:s.start,end:s.end,text:s.text})))}`
-    });
     let scenes = [];
     try {
+      const response = await openai.responses.create({
+        model: 'gpt-5-mini',
+        input: `Plan surreal original animated sky scenes for a vertical music visualizer. Style: ${style}. Use clouds, stars, moons, sunsets, lightning, aurora and abstract celestial light. No logos or copyrighted characters. Return JSON only: {"scenes":[{"start":0,"end":5,"prompt":"...","mood":"..."}]}. Lyrics: ${JSON.stringify(segments.map(s => ({start:s.start,end:s.end,text:s.text})))}`
+      });
       const cleaned = response.output_text.replace(/^```json\s*|\s*```$/g, '');
       scenes = JSON.parse(cleaned).scenes || [];
-    } catch {}
+    } catch (sceneErr) {
+      console.warn('Scene planning skipped:', sceneErr?.message || sceneErr);
+    }
+
     return res.status(200).json({ text: tx.text || '', words, scenes });
   } catch (err) {
     console.error(err);
+    if (err?.code === 'credit_balance_exhausted' || err?.status === 429) {
+      return res.status(402).json({
+        error: 'OpenAI API credits are empty. Add API credits in your OpenAI Platform billing account, then try again.',
+        code: 'API_CREDITS_REQUIRED'
+      });
+    }
     return res.status(500).json({ error: err?.message || 'AI analysis failed' });
   }
 }
