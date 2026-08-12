@@ -35,6 +35,9 @@ jobs:
           echo "Project folders:"
           find build-src -maxdepth 2 -type f | sort | head -80
 
+      - name: Apply Android video duration fix
+        run: python scripts/fix-android-duration.py
+
       - name: Install dependencies
         working-directory: build-src/reelwave-mobile-v3
         run: npm install
@@ -54,11 +57,11 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p apk-output
-          cp build-src/reelwave-mobile-v3/android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-v3-debug.apk
+          cp build-src/reelwave-mobile-v3/android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-v4-duration-fix.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Reelwave-Android-APK
-          path: apk-output/Reelwave-v3-debug.apk
+          name: Reelwave-Android-APK-v4
+          path: apk-output/Reelwave-v4-duration-fix.apk
           if-no-files-found: error
