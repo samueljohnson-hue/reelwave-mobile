@@ -1,4 +1,4 @@
-name: Build Reelwave APK
+name: Build Reelwave AI APK
 
 on:
   workflow_dispatch:
@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,41 +26,29 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Unpack Reelwave project
-        run: |
-          rm -rf build-src
-          mkdir build-src
-          unzip -q "reelwave-mobile-v3-brat (1).zip" -d build-src
-          echo "Project folders:"
-          find build-src -maxdepth 2 -type f | sort | head -80
-
-      - name: Apply Android video duration fix
-        run: python scripts/fix-android-duration.py
-
       - name: Install dependencies
-        working-directory: build-src/reelwave-mobile-v3
         run: npm install
 
       - name: Generate Android project
-        working-directory: build-src/reelwave-mobile-v3
         run: |
+          rm -rf android
           npx cap add android
           npx cap sync android
 
       - name: Build debug APK
-        working-directory: build-src/reelwave-mobile-v3/android
+        working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
-      - name: Rename APK
+      - name: Prepare APK
         run: |
           mkdir -p apk-output
-          cp build-src/reelwave-mobile-v3/android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-v4-duration-fix.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-AI-v5-debug.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Reelwave-Android-APK-v4
-          path: apk-output/Reelwave-v4-duration-fix.apk
+          name: Reelwave-AI-Android-APK
+          path: apk-output/Reelwave-AI-v5-debug.apk
           if-no-files-found: error
