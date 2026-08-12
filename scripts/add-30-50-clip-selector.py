@@ -47,13 +47,25 @@ function updateClip(resetAI=true){
   if(resetAI){words=[];scenes=[];aiStatus.textContent='Section changed — analyze this 30–50 sec clip with AI.'}
   draw(0);
 }
-function encodeWav(buffer,startSec,durationSec){
-  const sr=buffer.sampleRate,start=Math.floor(startSec*sr),frames=Math.floor(durationSec*sr),channels=Math.min(2,buffer.numberOfChannels),bytes=44+frames*channels*2,out=new ArrayBuffer(bytes),v=new DataView(out);
-  const str=(o,x)=>{for(let i=0;i<x.length;i++)v.setUint8(o+i,x.charCodeAt(i))};str(0,'RIFF');v.setUint32(4,bytes-8,true);str(8,'WAVE');str(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,channels,true);v.setUint32(24,sr,true);v.setUint32(28,sr*channels*2,true);v.setUint16(32,channels*2,true);v.setUint16(34,16,true);str(36,'data');v.setUint32(40,frames*channels*2,true);
-  let o=44;for(let i=0;i<frames;i++){for(let c=0;c<channels;c++){const data=buffer.getChannelData(c),sample=Math.max(-1,Math.min(1,data[Math.min(start+i,data.length-1)]||0));v.setInt16(o,sample<0?sample*32768:sample*32767,true);o+=2}}
+function encodeAnalysisWav(buffer,startSec,durationSec){
+  const targetRate=16000;
+  const srcRate=buffer.sampleRate;
+  const srcStart=Math.floor(startSec*srcRate);
+  const outFrames=Math.max(1,Math.floor(durationSec*targetRate));
+  const out=new ArrayBuffer(44+outFrames*2),v=new DataView(out);
+  const str=(o,x)=>{for(let i=0;i<x.length;i++)v.setUint8(o+i,x.charCodeAt(i))};
+  str(0,'RIFF');v.setUint32(4,36+outFrames*2,true);str(8,'WAVE');str(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,targetRate,true);v.setUint32(28,targetRate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);str(36,'data');v.setUint32(40,outFrames*2,true);
+  const channels=[];for(let c=0;c<buffer.numberOfChannels;c++)channels.push(buffer.getChannelData(c));
+  for(let i=0;i<outFrames;i++){
+    const srcPos=srcStart+(i*srcRate/targetRate),i0=Math.floor(srcPos),i1=Math.min(i0+1,buffer.length-1),f=srcPos-i0;
+    let sample=0;
+    for(const ch of channels){const a=ch[Math.min(i0,ch.length-1)]||0,b=ch[Math.min(i1,ch.length-1)]||0;sample+=a+(b-a)*f}
+    sample/=Math.max(1,channels.length);sample=Math.max(-1,Math.min(1,sample));
+    v.setInt16(44+i*2,sample<0?sample*32768:sample*32767,true);
+  }
   return new Blob([out],{type:'audio/wav'});
 }
-async function selectedClipFile(){const tmp=new (window.AudioContext||window.webkitAudioContext)();try{const buf=await tmp.decodeAudioData(await songFile.arrayBuffer());const wav=encodeWav(buf,clipStart,clipLength);return new File([wav],'reelwave-selected-clip.wav',{type:'audio/wav'})}finally{tmp.close()}}
+async function selectedClipFile(){const tmp=new (window.AudioContext||window.webkitAudioContext)();try{const buf=await tmp.decodeAudioData(await songFile.arrayBuffer());const wav=encodeAnalysisWav(buf,clipStart,clipLength);return new File([wav],'reelwave-selected-clip-16k-mono.wav',{type:'audio/wav'})}finally{tmp.close()}}
 '''
 if needle not in s:
     raise SystemExit('Could not insert clip helper functions')
@@ -66,7 +78,7 @@ if old_audio not in s:
 s = s.replace(old_audio,new_audio,1)
 
 old_ai = "aiBtn.onclick=async()=>{if(!songFile)return;aiBtn.disabled=true;aiStatus.textContent='Listening to the song, timing words and planning scenes…';try{const fd=new FormData();fd.append('audio',songFile,songFile.name);fd.append('style',style);const r=await fetch(BACKEND+'/api/analyze',{method:'POST',body:fd});if(!r.ok)throw new Error(await r.text());const data=await r.json();words=Array.isArray(data.words)?data.words:[];scenes=Array.isArray(data.scenes)?data.scenes:[];aiStatus.innerHTML=`AI complete: <strong>${words.length}</strong> timed words · <strong>${scenes.length}</strong> scene ideas. Lyrics will be burned into the video.`;draw(audio.currentTime||0)}catch(err){aiStatus.textContent='AI analysis failed: '+err.message}finally{aiBtn.disabled=false}};"
-new_ai = "aiBtn.onclick=async()=>{if(!songFile)return;aiBtn.disabled=true;aiStatus.textContent=`Preparing ${clipLength.toFixed(0)} sec clip, then listening for lyrics…`;try{const clip=await selectedClipFile();const fd=new FormData();fd.append('audio',clip,clip.name);fd.append('style',style);const r=await fetch(BACKEND+'/api/analyze',{method:'POST',body:fd});if(!r.ok)throw new Error(await r.text());const data=await r.json();words=Array.isArray(data.words)?data.words:[];scenes=Array.isArray(data.scenes)?data.scenes:[];aiStatus.innerHTML=`AI complete for ${fmt(clipStart)}–${fmt(clipStart+clipLength)}: <strong>${words.length}</strong> timed words · <strong>${scenes.length}</strong> scene ideas.`;draw(0)}catch(err){aiStatus.textContent='AI analysis failed: '+err.message}finally{aiBtn.disabled=false}};"
+new_ai = "aiBtn.onclick=async()=>{if(!songFile)return;aiBtn.disabled=true;aiStatus.textContent=`Preparing a compressed ${clipLength.toFixed(0)} sec analysis clip…`;try{const clip=await selectedClipFile();const fd=new FormData();fd.append('audio',clip,clip.name);fd.append('style',style);const r=await fetch(BACKEND+'/api/analyze',{method:'POST',body:fd});if(!r.ok)throw new Error(await r.text());const data=await r.json();words=Array.isArray(data.words)?data.words:[];scenes=Array.isArray(data.scenes)?data.scenes:[];aiStatus.innerHTML=`AI complete for ${fmt(clipStart)}–${fmt(clipStart+clipLength)}: <strong>${words.length}</strong> timed words · <strong>${scenes.length}</strong> scene ideas.`;draw(0)}catch(err){aiStatus.textContent='AI analysis failed: '+err.message}finally{aiBtn.disabled=false}};"
 if old_ai not in s:
     raise SystemExit('Could not replace AI handler')
 s=s.replace(old_ai,new_ai,1)
@@ -85,13 +97,11 @@ s=s.replace(old_preview,new_preview,1)
 
 s=s.replace("audio.currentTime=0;cancelAnimationFrame(raf);loop();rec.start(500);await audio.play();const dur=Math.max(1,audio.duration||30),start=performance.now();",
             "audio.currentTime=clipStart;cancelAnimationFrame(raf);loop();rec.start(500);await audio.play();const dur=clipLength,start=performance.now();",1)
-
 s=s.replace("if(p>=1||audio.ended)return resolve();","if(p>=1||audio.currentTime>=clipStart+clipLength||audio.ended)return resolve();",1)
-
 s=s.replace('Upload a song, let AI time the lyrics, then use generated skies or your own photo/GIF.', 'Upload a song, choose a 30–50 second section, let AI time the lyrics, then use generated skies or your own photo/GIF.', 1)
 s=s.replace('✨ Analyze lyrics with AI','✨ Analyze selected clip with AI',1)
 s=s.replace('▶ Preview','▶ Preview selected section',1)
 s=s.replace('Export 9:16 lyric video','Export selected lyric video',1)
 
 p.write_text(s,encoding='utf-8')
-print('Applied Reelwave 30–50 second clip selector and clipped AI analysis.')
+print('Applied Reelwave 30–50 second selector with compact 16 kHz mono AI clip.')
