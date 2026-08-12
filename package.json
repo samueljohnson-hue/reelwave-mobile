@@ -1,0 +1,30 @@
+{
+  "name": "reelwave-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reelwave music video maker for iOS and Android using Capacitor.",
+  "scripts": {
+    "sync": "npx cap sync",
+    "copy": "npx cap copy",
+    "add:ios": "npx cap add ios",
+    "add:android": "npx cap add android",
+    "open:ios": "npx cap open ios",
+    "open:android": "npx cap open android",
+    "assets": "npx capacitor-assets generate",
+    "patch:ios": "node scripts/patch-ios.mjs",
+    "setup:ios": "npx cap add ios && node scripts/patch-ios.mjs && npx cap sync ios",
+    "setup:android": "npx cap add android && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/ios": "^8.4.2",
+    "@capacitor/share": "^8.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.0",
+    "@capacitor/cli": "^8.4.2",
+    "typescript": "^5.9.0"
+  }
+}
