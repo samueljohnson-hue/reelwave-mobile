@@ -29,19 +29,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Connect Reelwave to production AI backend
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('www/index.html')
-          s = p.read_text()
-          old = "backendUrl.value=localStorage.getItem('reelwaveBackend')||'';"
-          new = "backendUrl.value='https://reelwave-mobile.vercel.app';backendUrl.readOnly=true;"
-          if old not in s:
-              raise SystemExit('Could not find backend URL initialization')
-          p.write_text(s.replace(old, new, 1))
-          PY
-
       - name: Generate Android project
         run: |
           rm -rf android
@@ -57,11 +44,11 @@ jobs:
       - name: Prepare APK
         run: |
           mkdir -p apk-output
-          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-AI-v6-connected.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-AI-v7-media-lyrics.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Reelwave-AI-v6-Connected-APK
-          path: apk-output/Reelwave-AI-v6-connected.apk
+          name: Reelwave-AI-v7-Media-Lyrics-APK
+          path: apk-output/Reelwave-AI-v7-media-lyrics.apk
           if-no-files-found: error
