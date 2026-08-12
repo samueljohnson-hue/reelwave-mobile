@@ -11,53 +11,44 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-
       - name: Install dependencies
         run: npm install
-
       - name: Add expanded sky library
         run: python scripts/add-more-skies.py
-
       - name: Add audio reactive sky movement
         run: python scripts/add-audio-reactive-skies.py
-
+      - name: Add Brat lyric styles
+        run: python scripts/add-brat-lyric-styles.py
       - name: Apply 30 to 50 second clip selector
         run: python scripts/add-30-50-clip-selector.py
-
       - name: Generate Android project
         run: |
           rm -rf android
           npx cap add android
           npx cap sync android
-
       - name: Build debug APK
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
-
       - name: Prepare APK
         run: |
           mkdir -p apk-output
-          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-AI-v10-beat-skies.apk
-
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-AI-v11-brat-lyrics.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Reelwave-AI-v10-Beat-Skies-APK
-          path: apk-output/Reelwave-AI-v10-beat-skies.apk
+          name: Reelwave-AI-v11-Brat-Lyrics-APK
+          path: apk-output/Reelwave-AI-v11-brat-lyrics.apk
           if-no-files-found: error
