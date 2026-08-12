@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Add expanded sky library
+        run: python scripts/add-more-skies.py
+
       - name: Apply 30 to 50 second clip selector
         run: python scripts/add-30-50-clip-selector.py
 
@@ -47,11 +50,11 @@ jobs:
       - name: Prepare APK
         run: |
           mkdir -p apk-output
-          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-AI-v8-30-50sec.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-AI-v9-more-skies.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Reelwave-AI-v8-30-50sec-APK
-          path: apk-output/Reelwave-AI-v8-30-50sec.apk
+          name: Reelwave-AI-v9-More-Skies-APK
+          path: apk-output/Reelwave-AI-v9-more-skies.apk
           if-no-files-found: error
