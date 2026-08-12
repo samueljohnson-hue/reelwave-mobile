@@ -1,0 +1,65 @@
+name: Build Reelwave APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Unpack Reelwave project
+        run: |
+          rm -rf build-src
+          mkdir build-src
+          unzip -q "reelwave-mobile-v3-brat (1).zip" -d build-src
+          echo "Project folders:"
+          find build-src -maxdepth 2 -type f | sort | head -80
+
+      - name: Install dependencies
+        working-directory: build-src/reelwave-mobile-v3
+        run: npm install
+
+      - name: Generate Android project
+        working-directory: build-src/reelwave-mobile-v3
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Build debug APK
+        working-directory: build-src/reelwave-mobile-v3/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Rename APK
+        run: |
+          mkdir -p apk-output
+          cp build-src/reelwave-mobile-v3/android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-v3-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Reelwave-Android-APK
+          path: apk-output/Reelwave-v3-debug.apk
+          if-no-files-found: error
