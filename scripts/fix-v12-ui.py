@@ -14,8 +14,14 @@ good="function loop(){if(!audio.paused&&audio.currentTime>=clipStart+clipLength)
 if bad in s:
     s=s.replace(bad,good,1)
 
+# Fix remaining syntax error in the manual lyric word builder.
+bad_manual="scenes=[];draw(Math.max(0,(audio.currentTime||clipStart)-clipStart);return true;"
+good_manual="scenes=[];draw(Math.max(0,(audio.currentTime||clipStart)-clipStart));return true;"
+if bad_manual in s:
+    s=s.replace(bad_manual,good_manual,1)
+
 # Add a visible boot error rather than silently disabling all controls.
 s=s.replace("(()=>{const $=id=>document.getElementById(id),", "(()=>{window.addEventListener('error',e=>{const el=document.getElementById('audioMeta');if(el)el.textContent='App error: '+e.message});const $=id=>document.getElementById(id),",1)
 
 p.write_text(s,encoding='utf-8')
-print('Applied UI refs + playback loop syntax fix.')
+print('Applied UI refs + playback/manual lyric syntax fixes.')
