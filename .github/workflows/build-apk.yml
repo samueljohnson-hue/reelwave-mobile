@@ -34,8 +34,20 @@ jobs:
         run: python scripts/add-30-50-clip-selector.py
       - name: Add manual lyric sync
         run: python scripts/add-manual-lyrics-sync.py
-      - name: Fix interactive controls
+      - name: Fix interactive controls and playback syntax
         run: python scripts/fix-v12-ui.py
+      - name: Syntax-check generated app JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('www/index.html').read_text(encoding='utf-8')
+          a=s.rfind('<script>')
+          b=s.rfind('</script>')
+          if a < 0 or b < 0 or b <= a:
+              raise SystemExit('Could not locate embedded app script')
+          Path('/tmp/reelwave-app.js').write_text(s[a+8:b],encoding='utf-8')
+          PY
+          node --check /tmp/reelwave-app.js
       - name: Generate Android project
         run: |
           rm -rf android
@@ -49,10 +61,10 @@ jobs:
       - name: Prepare APK
         run: |
           mkdir -p apk-output
-          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-AI-v13-controls-fix.apk
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk-output/Reelwave-AI-v14-startup-fix.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Reelwave-AI-v13-Controls-Fix-APK
-          path: apk-output/Reelwave-AI-v13-controls-fix.apk
+          name: Reelwave-AI-v14-Startup-Fix-APK
+          path: apk-output/Reelwave-AI-v14-startup-fix.apk
           if-no-files-found: error
